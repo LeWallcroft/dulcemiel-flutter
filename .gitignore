@@ -1,0 +1,36 @@
+# Flutter / Dart
+.dart_tool/
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+/build/
+/coverage/
+
+# Android local build configuration and signing secrets
+/android/local.properties
+/android/key.properties
+/android/app/debug
+/android/app/profile
+/android/app/release
+*.jks
+*.keystore
+
+# IDE and OS
+.idea/
+*.iml
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Local environment, credentials, runtime logs and generated artifacts
+**/.env
+**/.env.*.local
+**/logs/
+**/target/
+**/*.log
+**/*.pid
+**/*firebase-adminsdk*.json
+**/*service-account*.json
+**/serviceAccountKey.json
+/lib/firebase_options.dart
+/android/app/google-services.json
