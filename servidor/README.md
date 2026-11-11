@@ -26,12 +26,16 @@ Conéctate a `DulceMielBD` en la instancia local y ejecuta una vez `database/mig
 
 Para las imágenes, ejecuta `database/migrations/V20261107_01__backblaze_storage_image_keys.sql` conectado a la base configurada en `MSSQL_JDBC_URL`. Añade claves de objeto para productos, carrusel y logo, conserva cualquier URL o imagen binaria existente y permite que nuevas cargas usen B2. El backend mantiene la autorización de administrador y la app continúa recibiendo `imagen_url` en las respuestas.
 
+Para la versión actual de la app, aplica también `database/migrations/V20261107_02__ods12_envases_y_envios.sql` y `database/migrations/V20261111_01__pedido_ubicacion_entrega.sql`. La primera agrega opciones de envase, campos ODS 12 y datos de envío; la segunda agrega coordenadas opcionales para el punto de entrega. Ambas conservan los pedidos y productos existentes. El lanzador comprueba ahora tanto `/api/productos` como `/api/sitio/inicio` para detectar una base desactualizada antes de declarar listo el servidor.
+
 No ejecutes `database/schema.sql` sobre una base existente: elimina y recrea tablas. `database/azure-schema.sql` es un inicializador para una base vacía, no una migración.
 
 ## Ejecutar
 
-Haz doble clic en `Iniciar servidor Dulce Miel.cmd` desde la raíz del proyecto. La ventana permanece abierta con el estado del arranque. El lanzador comprueba Docker y SQL, inicia Spring Boot, luego el frontend Angular del sistema original (`Proyecto Final - Dulce Miel/Desarrollo/dulcemiel-web/frontend`) y abre `http://localhost:4200`. Los logs quedan en `servidor/logs/servidor.log` y `servidor/logs/frontend.log`. El API responde en `http://localhost:5000/api/health`. Para detener el backend, ejecuta `servidor/scripts/Stop-DulceMielServer.ps1`.
+Desde la raíz del repositorio ejecuta `Iniciar servidor Dulce Miel.bat`. Si aún no existe `servidor/.env`, el lanzador lo crea a partir de `.env.example` y pide completar esa configuración antes de volver a iniciarlo. Luego comprueba Docker/SQL Server, compila el backend Spring Boot y lo inicia en el puerto `5000`. Este lanzador inicia solo el backend móvil; no inicia el frontend Angular del sistema original.
 
-El servidor escucha en el puerto `5000`. La variante Android `debug` apunta por defecto a `http://10.0.2.2:5000/api/` (la PC vista desde el emulador), mientras `release` conserva Azure. Se puede sobrescribir con `-PdulcemielApiBaseUrl=...`. Para validar desde Windows, usa `http://127.0.0.1:5000/api/health`.
+Para verificar el servidor desde Windows, abre `http://127.0.0.1:5000/api/health`, `http://127.0.0.1:5000/api/productos` y `http://127.0.0.1:5000/api/sitio/inicio`. El lanzador valida salud, catálogo y contenido de portada antes de indicar que el API está listo. Detén el proceso con `servidor/scripts/Stop-DulceMielServer.ps1`.
+
+La app usa `http://10.0.2.2:5000/api/` por defecto cuando corre en Android Emulator. Para sobrescribirla en Flutter, usa `--dart-define=API_BASE_URL=http://<IP_DEL_PC>:5000/api/`; `10.0.2.2` no funciona desde un teléfono físico. Para un dispositivo físico, utiliza la IPv4 LAN del PC y permite el puerto 5000 en el firewall.
 
 El servidor puede iniciar sin credenciales de Firebase Admin, pero `POST /api/auth/firebase/exchange` sí requiere una credencial de servicio Firebase o Application Default Credentials. Si no están configuradas, el intercambio de token fallará al invocar Firebase Admin. Las operaciones de imágenes requieren además la configuración B2 y la Application Key.

@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../models/linea_carrito.dart';
+import '../models/coordenada.dart';
 import '../network/api_service.dart';
 import '../repositories/autenticacion_repository.dart';
 import '../repositories/carrito_repository.dart';
 import '../repositories/sesion_repository.dart';
 import '../viewmodels/carrito_view_model.dart';
 import 'acceso_screen.dart';
+import 'mapa_ubicacion_screen.dart';
 import 'widgets/ui_components.dart';
 
 class CarritoScreen extends StatefulWidget {
@@ -342,6 +344,7 @@ class _CheckoutScreenState extends State<_CheckoutScreen> {
   String? destinoEnvases;
   String? receptorEnvases;
   String? telefonoEnvases;
+  Coordenada? ubicacionEntrega;
 
   @override
   void initState() {
@@ -424,6 +427,37 @@ class _CheckoutScreenState extends State<_CheckoutScreen> {
                     },
                   ),
                   _field(direccion, 'Dirección'),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: OutlinedButton.icon(
+                      onPressed: () async {
+                        final result = await Navigator.of(context)
+                            .push<Coordenada>(
+                              MaterialPageRoute(
+                                builder: (_) => MapaUbicacionScreen(
+                                  inicial: ubicacionEntrega,
+                                ),
+                              ),
+                            );
+                        if (result != null && mounted) {
+                          setState(() => ubicacionEntrega = result);
+                        }
+                      },
+                      icon: const Icon(Icons.map_outlined),
+                      label: Text(
+                        ubicacionEntrega == null
+                            ? 'Elegir ubicación en el mapa (opcional)'
+                            : 'Ubicación seleccionada',
+                      ),
+                    ),
+                  ),
+                  if (ubicacionEntrega != null)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Text(
+                        'Punto: ${ubicacionEntrega!.latitud.toStringAsFixed(5)}, ${ubicacionEntrega!.longitud.toStringAsFixed(5)}',
+                      ),
+                    ),
                   _field(distrito, 'Distrito o ciudad'),
                   _field(
                     referencia,
@@ -590,6 +624,10 @@ class _CheckoutScreenState extends State<_CheckoutScreen> {
         'distrito': distrito.text.trim(),
         'referencia': referencia.text.trim(),
         'notas': notas.text.trim(),
+        if (ubicacionEntrega != null) ...{
+          'direccion_entrega_lat': ubicacionEntrega!.latitud,
+          'direccion_entrega_lng': ubicacionEntrega!.longitud,
+        },
       },
       envioEnvase: widget.necesitaEnvasePropio
           ? {

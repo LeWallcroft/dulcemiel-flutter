@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../models/producto.dart';
+import '../models/ui_state.dart';
 import '../network/api_service.dart';
 import '../repositories/catalogo_repository.dart';
 
@@ -8,32 +9,32 @@ class CatalogoViewModel extends ChangeNotifier {
   CatalogoViewModel(CatalogoRepository repository) : _repository = repository;
 
   final CatalogoRepository _repository;
-  List<Producto> _productos = const [];
-  bool _cargando = false;
-  bool _cargado = false;
-  String? _error;
+  UiState<List<Producto>> state = UiState.initial();
+  bool desdeCache = false;
 
-  List<Producto> get productos => _productos;
-  bool get cargando => _cargando;
-  bool get cargado => _cargado;
-  String? get error => _error;
+  List<Producto> get productos => state.data ?? const [];
+  bool get cargando => state.isLoading;
+  bool get cargado => state.isSuccess || state.isEmpty;
+  String? get error => state.hasError ? state.message : null;
 
   Future<void> cargar() async {
-    if (_cargando) return;
-    _cargando = true;
-    _error = null;
+    if (state.isLoading) return;
+    state = UiState.loading(previous: state.data);
     notifyListeners();
     try {
-      _productos = await _repository.cargarProductos();
-      _cargado = true;
+      final resultado = await _repository.cargarProductos();
+      desdeCache = resultado.desdeCache;
+      state = resultado.productos.isEmpty
+          ? UiState.empty(resultado.productos)
+          : UiState.success(resultado.productos);
     } on ApiException catch (exception) {
-      _error = exception.message;
-      _cargado = false;
+      state = UiState.error(exception.message, previous: state.data);
     } catch (_) {
-      _error = 'No se pudo cargar el catálogo. Revisa la conexión y reintenta.';
-      _cargado = false;
+      state = UiState.error(
+        'No se pudo cargar el catálogo. Revisa la conexión y reintenta.',
+        previous: state.data,
+      );
     } finally {
-      _cargando = false;
       notifyListeners();
     }
   }

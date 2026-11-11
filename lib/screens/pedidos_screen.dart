@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../models/pedido.dart';
+import '../models/coordenada.dart';
 import '../network/api_service.dart';
 import '../repositories/autenticacion_repository.dart';
 import '../repositories/pedidos_repository.dart';
 import '../repositories/sesion_repository.dart';
 import '../viewmodels/pedidos_view_model.dart';
 import 'acceso_screen.dart';
+import 'mapa_ubicacion_screen.dart';
 import 'widgets/ui_components.dart';
 
 class PedidosScreen extends StatefulWidget {
@@ -473,6 +475,23 @@ class _DetallePedidoScreenState extends State<_DetallePedidoScreen> {
                         Text(pedido.distrito!),
                       if (pedido.referencia?.isNotEmpty == true)
                         Text('Referencia: ${pedido.referencia}'),
+                      if (pedido.latitudEntrega != null &&
+                          pedido.longitudEntrega != null)
+                        TextButton.icon(
+                          onPressed: () => Navigator.of(context).push<void>(
+                            MaterialPageRoute(
+                              builder: (_) => MapaUbicacionScreen(
+                                inicial: Coordenada(
+                                  latitud: pedido.latitudEntrega!,
+                                  longitud: pedido.longitudEntrega!,
+                                ),
+                                soloLectura: true,
+                              ),
+                            ),
+                          ),
+                          icon: const Icon(Icons.map_outlined),
+                          label: const Text('Ver ubicación en el mapa'),
+                        ),
                       if (pedido.notas?.isNotEmpty == true)
                         Text('Notas: ${pedido.notas}'),
                     ],

@@ -1,32 +1,32 @@
 import 'package:flutter/foundation.dart';
 
-import '../models/estado_api.dart';
+import '../models/ui_state.dart';
 import '../network/api_service.dart';
 
 class InicioViewModel extends ChangeNotifier {
   InicioViewModel(this._apiService);
 
   final ApiService _apiService;
-  EstadoApi _estado = EstadoApi.inicial;
-  String? _mensaje;
+  UiState<String> state = UiState.initial();
 
-  EstadoApi get estado => _estado;
-  String? get mensaje => _mensaje;
+  String? get mensaje => state.message ?? state.data;
 
   Future<void> verificarApi() async {
-    _estado = EstadoApi.cargando;
-    _mensaje = null;
+    state = UiState.loading(previous: state.data);
     notifyListeners();
 
     try {
       final respuesta = await _apiService.consultarSalud();
-      _mensaje = respuesta['message']?.toString() ?? 'Servidor disponible.';
-      _estado = respuesta['success'] == true
-          ? EstadoApi.disponible
-          : EstadoApi.error;
+      final message =
+          respuesta['message']?.toString() ?? 'Servidor disponible.';
+      state = respuesta['success'] == true
+          ? UiState.success(message)
+          : UiState.error(message, previous: state.data);
     } catch (error) {
-      _mensaje = error is ApiException ? error.message : 'No se pudo conectar con el servidor. Verifica la red y vuelve a intentar.';
-      _estado = EstadoApi.error;
+      state = UiState.error(
+        error is ApiException ? error.message : 'No se pudo conectar con el servidor. Verifica la red y vuelve a intentar.',
+        previous: state.data,
+      );
     }
     notifyListeners();
   }

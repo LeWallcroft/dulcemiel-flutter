@@ -73,13 +73,15 @@ public class PedidosController {
                 INSERT INTO pedidos (
                   usuario_id, numero_pedido, total, contacto_nombre, contacto_telefono,
                   contacto_email, direccion_entrega, distrito, referencia, notas, estado,
-                  tiene_envase_cliente, cantidad_envases_cliente, envase_destino, envase_receptor, envase_telefono
+                  tiene_envase_cliente, cantidad_envases_cliente, envase_destino, envase_receptor, envase_telefono,
+                  direccion_entrega_lat, direccion_entrega_lng
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?); SELECT CAST(SCOPE_IDENTITY() AS INT)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?); SELECT CAST(SCOPE_IDENTITY() AS INT)
                 """, Integer.class, user.userId(), orderNumber, total, body.get("contacto_nombre"), body.get("contacto_telefono"),
                 emptyToNull(body.get("contacto_email")), body.get("direccion_entrega"), body.get("distrito"),
                 emptyToNull(body.get("referencia")), emptyToNull(body.get("notas")), hasCustomerJar ? "esperando_envase" : "pendiente",
-                hasCustomerJar, expectedJars, jarDestination.get("direccion_envases"), jarDestination.get("receptor_envases"), jarDestination.get("telefono_envases"));
+                hasCustomerJar, expectedJars, jarDestination.get("direccion_envases"), jarDestination.get("receptor_envases"), jarDestination.get("telefono_envases"),
+                decimalOrNull(body.get("direccion_entrega_lat")), decimalOrNull(body.get("direccion_entrega_lng")));
 
         for (Map<String, Object> item : items) {
             BigDecimal unitPrice = decimal(item.get("precio_unitario"));
@@ -106,7 +108,7 @@ public class PedidosController {
         if (user == null) return responses.error(HttpStatus.UNAUTHORIZED, "Token no proporcionado");
         var rows = jdbc.queryForList("""
                 SELECT id, numero_pedido, total, estado, fecha_pedido, fecha_entrega,
-                       contacto_nombre, contacto_telefono, contacto_email, direccion_entrega, distrito, referencia, notas,
+                       contacto_nombre, contacto_telefono, contacto_email, direccion_entrega, direccion_entrega_lat, direccion_entrega_lng, distrito, referencia, notas,
                        tiene_envase_cliente, cantidad_envases_cliente, envase_envio_agencia, envase_envio_guia,
                        envase_envio_costo, envase_envio_boleta_key, envase_recibido_fecha,
                        envio_pedido_agencia, envio_pedido_guia, envio_pedido_costo, envio_pedido_boleta_key
@@ -121,7 +123,7 @@ public class PedidosController {
         var rows = jdbc.queryForList("""
                 SELECT p.id, p.numero_pedido, p.total, p.estado, p.fecha_pedido, p.fecha_entrega,
                        p.contacto_nombre, p.contacto_telefono, p.contacto_email,
-                       p.direccion_entrega, p.distrito, p.referencia, p.notas,
+                       p.direccion_entrega, p.direccion_entrega_lat, p.direccion_entrega_lng, p.distrito, p.referencia, p.notas,
                        p.tiene_envase_cliente, p.cantidad_envases_cliente, p.envase_envio_agencia, p.envase_envio_guia,
                        p.envase_envio_costo, p.envase_envio_boleta_key, p.envase_recibido_fecha,
                        p.envio_pedido_agencia, p.envio_pedido_guia, p.envio_pedido_costo, p.envio_pedido_boleta_key,
@@ -254,6 +256,18 @@ public class PedidosController {
         if (blank(body.get("contacto_telefono"))) return "Ingresa un numero de celular o telefono de contacto";
         if (!String.valueOf(body.get("contacto_telefono")).trim().matches("^[0-9+()\\s-]{6,20}$")) return "Ingresa un numero de contacto valido";
         if (blank(body.get("direccion_entrega"))) return "Ingresa la direccion de entrega";
+        Object lat = body.get("direccion_entrega_lat");
+        Object lng = body.get("direccion_entrega_lng");
+        if ((lat == null) != (lng == null)) return "La ubicación debe incluir latitud y longitud";
+        if (lat != null) {
+            BigDecimal latitude = decimalOrNull(lat);
+            BigDecimal longitude = decimalOrNull(lng);
+            if (latitude == null || longitude == null
+                    || latitude.compareTo(BigDecimal.valueOf(-90)) < 0 || latitude.compareTo(BigDecimal.valueOf(90)) > 0
+                    || longitude.compareTo(BigDecimal.valueOf(-180)) < 0 || longitude.compareTo(BigDecimal.valueOf(180)) > 0) {
+                return "La ubicación seleccionada no es válida";
+            }
+        }
         if (blank(body.get("distrito"))) return "Ingresa el distrito o ciudad de entrega";
         if (body.get("referencia") != null && String.valueOf(body.get("referencia")).length() > 300) return "La referencia no debe superar los 300 caracteres";
         return null;
@@ -273,6 +287,12 @@ public class PedidosController {
 
     private static BigDecimal decimal(Object value) {
         return value instanceof BigDecimal bd ? bd : new BigDecimal(String.valueOf(value));
+    }
+
+    private static BigDecimal decimalOrNull(Object value) {
+        if (value == null) return null;
+        try { return new BigDecimal(value.toString()); }
+        catch (NumberFormatException ex) { return null; }
     }
 
     private static String string(Object value) { return value == null ? null : value.toString(); }
