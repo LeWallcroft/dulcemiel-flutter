@@ -1,33 +1,57 @@
 import 'package:flutter/foundation.dart';
 
 import '../network/api_service.dart';
+import '../models/ui_state.dart';
 import '../repositories/administracion_repository.dart';
+
+typedef AdminData = ({
+  Map<String, dynamic> resumen,
+  List<Map<String, dynamic>> productos,
+  List<Map<String, dynamic>> pedidos,
+  List<Map<String, dynamic>> promociones,
+  List<Map<String, dynamic>> usuarios,
+  Map<String, dynamic> sitio,
+});
 
 class AdministracionViewModel extends ChangeNotifier {
   AdministracionViewModel(this._repository);
   final AdministracionRepository _repository;
 
-  Map<String, dynamic> resumen = {};
-  List<Map<String, dynamic>> productos = [];
-  List<Map<String, dynamic>> pedidos = [];
-  List<Map<String, dynamic>> promociones = [];
-  List<Map<String, dynamic>> usuarios = [];
-  Map<String, dynamic> sitio = {};
-  bool cargando = false;
-  bool ocupado = false;
-  String? error;
-  String? mensaje;
+  UiState<AdminData> state = UiState.initial();
+  UiState<String> actionState = UiState.initial();
+  AdminData get _empty => (
+    resumen: {},
+    productos: [],
+    pedidos: [],
+    promociones: [],
+    usuarios: [],
+    sitio: {},
+  );
+  AdminData get data => state.data ?? _empty;
+  Map<String, dynamic> get resumen => data.resumen;
+  List<Map<String, dynamic>> get productos => data.productos;
+  List<Map<String, dynamic>> get pedidos => data.pedidos;
+  List<Map<String, dynamic>> get promociones => data.promociones;
+  List<Map<String, dynamic>> get usuarios => data.usuarios;
+  Map<String, dynamic> get sitio => data.sitio;
+  bool get cargando => state.isLoading;
+  bool get ocupado => actionState.isLoading;
+  String? get error => actionState.hasError
+      ? actionState.message
+      : state.hasError
+      ? state.message
+      : null;
+  String? get mensaje =>
+      actionState.isSuccess ? actionState.message ?? actionState.data : null;
 
   void limpiarAviso() {
-    error = null;
-    mensaje = null;
+    actionState = UiState.initial();
     notifyListeners();
   }
 
   Future<void> cargarTodo() async {
     if (cargando) return;
-    cargando = true;
-    error = null;
+    state = UiState.loading(previous: state.data);
     notifyListeners();
     try {
       final values = await Future.wait([
@@ -38,18 +62,20 @@ class AdministracionViewModel extends ChangeNotifier {
         _repository.cargarUsuarios(),
         _repository.cargarSitio(),
       ]);
-      resumen = values[0] as Map<String, dynamic>;
-      productos = values[1] as List<Map<String, dynamic>>;
-      pedidos = values[2] as List<Map<String, dynamic>>;
-      promociones = values[3] as List<Map<String, dynamic>>;
-      usuarios = values[4] as List<Map<String, dynamic>>;
-      sitio = values[5] as Map<String, dynamic>;
+      state = UiState.success((
+        resumen: values[0] as Map<String, dynamic>,
+        productos: values[1] as List<Map<String, dynamic>>,
+        pedidos: values[2] as List<Map<String, dynamic>>,
+        promociones: values[3] as List<Map<String, dynamic>>,
+        usuarios: values[4] as List<Map<String, dynamic>>,
+        sitio: values[5] as Map<String, dynamic>,
+      ));
     } catch (e) {
-      error = e is ApiException
-          ? e.message
-          : 'No se pudo cargar la administración.';
+      state = UiState.error(
+        e is ApiException ? e.message : 'No se pudo cargar la administración.',
+        previous: state.data,
+      );
     } finally {
-      cargando = false;
       notifyListeners();
     }
   }
@@ -59,20 +85,17 @@ class AdministracionViewModel extends ChangeNotifier {
     String ok = 'Cambios guardados.',
   }) async {
     if (ocupado) return;
-    ocupado = true;
-    error = null;
-    mensaje = null;
+    actionState = UiState.loading();
     notifyListeners();
     try {
       await accion();
-      mensaje = ok;
+      actionState = UiState.success(ok);
       await cargarTodo();
     } catch (e) {
-      error = e is ApiException
-          ? e.message
-          : 'No se pudo completar la operación.';
+      actionState = UiState.error(
+        e is ApiException ? e.message : 'No se pudo completar la operación.',
+      );
     } finally {
-      ocupado = false;
       notifyListeners();
     }
   }

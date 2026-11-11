@@ -7,6 +7,7 @@ $logFile = Join-Path $logDirectory 'servidor.log'
 $pidFile = Join-Path $logDirectory 'servidor.pid'
 $healthUrl = 'http://127.0.0.1:5000/api/health'
 $databaseCheckUrl = 'http://127.0.0.1:5000/api/productos'
+$storeContentCheckUrl = 'http://127.0.0.1:5000/api/sitio/inicio'
 New-Item -ItemType Directory -Path $logDirectory -Force | Out-Null
 
 if ($Worker) {
@@ -43,15 +44,17 @@ try {
     Invoke-RestMethod -Uri $healthUrl -TimeoutSec 2 | Out-Null
     $databaseCheck = Invoke-RestMethod -Uri $databaseCheckUrl -TimeoutSec 5
     if ($databaseCheck.success -ne $true) { throw 'La API esta activa, pero no confirmo la consulta SQL.' }
+    $storeContentCheck = Invoke-RestMethod -Uri $storeContentCheckUrl -TimeoutSec 5
+    if ($storeContentCheck.success -ne $true) { throw 'La API esta activa, pero no pudo cargar el contenido de tienda.' }
     Write-Host "El servidor ya esta activo: $healthUrl"
-    Write-Host 'Conexion con SQL Server verificada mediante /api/productos.'
+    Write-Host 'Conexion con SQL Server verificada mediante /api/productos y /api/sitio/inicio.'
     exit 0
 } catch { }
 
 if (Test-Path -LiteralPath $pidFile) {
     $savedPid = Get-Content -LiteralPath $pidFile -ErrorAction SilentlyContinue | Select-Object -First 1
     if ($savedPid -match '^\d+$' -and (Get-Process -Id ([int]$savedPid) -ErrorAction SilentlyContinue)) {
-        throw "El proceso PID $savedPid sigue activo, pero la API no responde. Revisa $logFile"
+        throw "El proceso PID $savedPid sigue activo, pero fallan las comprobaciones del API o la base de datos. Confirma las migraciones V20261107_02__ods12_envases_y_envios.sql y V20261111_01__pedido_ubicacion_entrega.sql, y revisa $logFile"
     }
 }
 
@@ -67,9 +70,10 @@ for ($attempt = 0; $attempt -lt 90; $attempt++) {
     try {
         $health = Invoke-RestMethod -Uri $healthUrl -TimeoutSec 2
         $databaseCheck = Invoke-RestMethod -Uri $databaseCheckUrl -TimeoutSec 5
-        if ($health.success -eq $true -and $databaseCheck.success -eq $true) {
+        $storeContentCheck = Invoke-RestMethod -Uri $storeContentCheckUrl -TimeoutSec 5
+        if ($health.success -eq $true -and $databaseCheck.success -eq $true -and $storeContentCheck.success -eq $true) {
             Write-Host 'Servidor Dulce Miel iniciado.'
-            Write-Host 'Conexion con SQL Server verificada mediante /api/productos.'
+            Write-Host 'Conexion con SQL Server y contenido de tienda verificados.'
             Write-Host 'API: http://127.0.0.1:5000/api/'
             Write-Host 'Android Emulator: http://10.0.2.2:5000/api/'
             Write-Host "Registro: $logFile"
@@ -78,4 +82,4 @@ for ($attempt = 0; $attempt -lt 90; $attempt++) {
     } catch { }
     if (-not (Get-Process -Id $process.Id -ErrorAction SilentlyContinue)) { break }
 }
-throw "No se confirmo el inicio del servidor. Revisa $logFile"
+throw "No se confirmo el inicio del servidor. Verifica migraciones SQL pendientes y revisa $logFile"

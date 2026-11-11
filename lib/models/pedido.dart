@@ -8,6 +8,8 @@ class Pedido {
     this.nombreContacto,
     this.telefono,
     this.direccion,
+    this.latitudEntrega,
+    this.longitudEntrega,
     this.distrito,
     this.referencia,
     this.notas,
@@ -34,6 +36,8 @@ class Pedido {
   final String? nombreContacto;
   final String? telefono;
   final String? direccion;
+  final double? latitudEntrega;
+  final double? longitudEntrega;
   final String? distrito;
   final String? referencia;
   final String? notas;
@@ -61,6 +65,8 @@ class Pedido {
     nombreContacto: json['contacto_nombre']?.toString(),
     telefono: json['contacto_telefono']?.toString(),
     direccion: json['direccion_entrega']?.toString(),
+    latitudEntrega: double.tryParse('${json['direccion_entrega_lat']}'),
+    longitudEntrega: double.tryParse('${json['direccion_entrega_lng']}'),
     distrito: json['distrito']?.toString(),
     referencia: json['referencia']?.toString(),
     notas: json['notas']?.toString(),

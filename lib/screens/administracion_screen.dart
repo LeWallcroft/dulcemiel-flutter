@@ -359,6 +359,11 @@ class _AdministracionScreenState extends State<AdministracionScreen>
                       Text(
                         '${p['direccion_entrega']} · ${p['distrito'] ?? ''}',
                       ),
+                    if (p['direccion_entrega_lat'] != null &&
+                        p['direccion_entrega_lng'] != null)
+                      Text(
+                        'Ubicación: ${p['direccion_entrega_lat']}, ${p['direccion_entrega_lng']}',
+                      ),
                     if (p['tiene_envase_cliente'] == true) ...[
                       Text(
                         'Frascos del cliente: ${p['cantidad_envases_cliente'] ?? 0}',

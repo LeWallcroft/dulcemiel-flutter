@@ -1,45 +1,57 @@
 import 'package:flutter/foundation.dart';
 
 import '../models/pedido.dart';
+import '../models/ui_state.dart';
 import '../network/api_service.dart';
 import '../repositories/pedidos_repository.dart';
 
 class PedidosViewModel extends ChangeNotifier {
   PedidosViewModel(this._repository);
   final PedidosRepository _repository;
-  List<Pedido> pedidos = const [];
-  DetallePedido? detalle;
-  bool cargando = false;
-  String? error;
+  UiState<List<Pedido>> state = UiState.initial();
+  UiState<DetallePedido> detailState = UiState.initial();
+  UiState<String> actionState = UiState.initial();
+  List<Pedido> get pedidos => state.data ?? const [];
+  DetallePedido? get detalle => detailState.data;
+  bool get cargando => state.isLoading || detailState.isLoading;
+  String? get error => actionState.hasError
+      ? actionState.message
+      : detailState.hasError
+      ? detailState.message
+      : state.hasError
+      ? state.message
+      : null;
 
   Future<void> cargar() async {
-    if (cargando) return;
-    cargando = true;
-    error = null;
+    if (state.isLoading) return;
+    state = UiState.loading(previous: state.data);
     notifyListeners();
     try {
-      pedidos = await _repository.cargarPedidos();
+      final result = await _repository.cargarPedidos();
+      state = result.isEmpty ? UiState.empty(result) : UiState.success(result);
     } catch (e) {
-      error = e is ApiException ? e.message : 'No se pudo cargar tu historial.';
+      state = UiState.error(
+        e is ApiException ? e.message : 'No se pudo cargar tu historial.',
+        previous: state.data,
+      );
     } finally {
-      cargando = false;
       notifyListeners();
     }
   }
 
   Future<void> cargarDetalle(int id) async {
-    cargando = true;
-    detalle = null;
-    error = null;
+    detailState = UiState.loading(previous: detailState.data);
     notifyListeners();
     try {
-      detalle = await _repository.cargarDetalle(id);
+      detailState = UiState.success(await _repository.cargarDetalle(id));
     } catch (e) {
-      error = e is ApiException
-          ? e.message
-          : 'No se pudo cargar el detalle del pedido.';
+      detailState = UiState.error(
+        e is ApiException
+            ? e.message
+            : 'No se pudo cargar el detalle del pedido.',
+        previous: detailState.data,
+      );
     } finally {
-      cargando = false;
       notifyListeners();
     }
   }
@@ -49,8 +61,7 @@ class PedidosViewModel extends ChangeNotifier {
     required Map<String, String> fields,
     required String imagePath,
   }) async {
-    cargando = true;
-    error = null;
+    actionState = UiState.loading(previous: actionState.data);
     notifyListeners();
     try {
       await _repository.enviarBoletaEnvase(
@@ -58,13 +69,15 @@ class PedidosViewModel extends ChangeNotifier {
         fields: fields,
         imagePath: imagePath,
       );
-      detalle = await _repository.cargarDetalle(pedidoId);
+      final updated = await _repository.cargarDetalle(pedidoId);
+      detailState = UiState.success(updated);
+      actionState = UiState.success('Comprobante guardado.');
     } catch (e) {
-      error = e is ApiException
+      final message = e is ApiException
           ? e.message
           : 'No se pudo guardar la boleta del frasco.';
+      actionState = UiState.error(message);
     } finally {
-      cargando = false;
       notifyListeners();
     }
   }

@@ -129,12 +129,19 @@ CREATE TABLE dbo.pedidos (
   contacto_telefono NVARCHAR(30) NOT NULL,
   contacto_email NVARCHAR(120) NULL,
   direccion_entrega NVARCHAR(250) NOT NULL,
+  direccion_entrega_lat DECIMAL(10,7) NULL,
+  direccion_entrega_lng DECIMAL(10,7) NULL,
   distrito NVARCHAR(100) NOT NULL,
   referencia NVARCHAR(300) NULL,
   notas NVARCHAR(500) NULL,
   fecha_pedido DATETIME2(0) NOT NULL CONSTRAINT DF_pedidos_fecha_pedido DEFAULT SYSUTCDATETIME(),
   fecha_entrega DATETIME2(0) NULL,
   CONSTRAINT CK_pedidos_total CHECK (total >= 0),
+  CONSTRAINT CK_pedidos_ubicacion_entrega CHECK (
+    (direccion_entrega_lat IS NULL AND direccion_entrega_lng IS NULL)
+    OR (direccion_entrega_lat IS NOT NULL AND direccion_entrega_lng IS NOT NULL
+      AND direccion_entrega_lat BETWEEN -90 AND 90 AND direccion_entrega_lng BETWEEN -180 AND 180)
+  ),
   CONSTRAINT CK_pedidos_estado CHECK (estado IN (N'pendiente', N'procesando', N'enviado', N'entregado', N'cancelado')),
   CONSTRAINT FK_pedidos_usuarios FOREIGN KEY (usuario_id) REFERENCES dbo.usuarios(id) ON DELETE CASCADE
 );

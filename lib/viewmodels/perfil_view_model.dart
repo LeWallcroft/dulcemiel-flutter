@@ -1,27 +1,30 @@
 import 'package:flutter/foundation.dart';
 
 import '../models/perfil_usuario.dart';
+import '../models/ui_state.dart';
 import '../network/api_service.dart';
 import '../repositories/perfil_repository.dart';
 
 class PerfilViewModel extends ChangeNotifier {
   PerfilViewModel(this._repository);
   final PerfilRepository _repository;
-  PerfilUsuario? perfil;
-  bool cargando = false;
-  String? error;
+  UiState<PerfilUsuario> state = UiState.initial();
+  PerfilUsuario? get perfil => state.data;
+  bool get cargando => state.isLoading;
+  String? get error => state.hasError ? state.message : null;
 
   Future<void> cargar() async {
     if (cargando) return;
-    cargando = true;
-    error = null;
+    state = UiState.loading(previous: perfil);
     notifyListeners();
     try {
-      perfil = await _repository.cargar();
+      state = UiState.success(await _repository.cargar());
     } catch (e) {
-      error = e is ApiException ? e.message : 'No se pudo cargar tu perfil.';
+      state = UiState.error(
+        e is ApiException ? e.message : 'No se pudo cargar tu perfil.',
+        previous: perfil,
+      );
     } finally {
-      cargando = false;
       notifyListeners();
     }
   }

@@ -130,6 +130,18 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
                   subtitle: 'Encuentra tus productos favoritos de la colmena.',
                   icon: Icons.storefront_outlined,
                 ),
+                if (_viewModel.desdeCache) ...[
+                  const SizedBox(height: 8),
+                  Card(
+                    color: Theme.of(context).colorScheme.tertiaryContainer,
+                    child: const Padding(
+                      padding: EdgeInsets.all(12),
+                      child: Text(
+                        'Catálogo guardado para consulta sin conexión. El stock y las imágenes podrían estar desactualizados.',
+                      ),
+                    ),
+                  ),
+                ],
                 TextField(
                   controller: _busquedaController,
                   onChanged: (value) =>

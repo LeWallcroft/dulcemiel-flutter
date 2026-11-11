@@ -1,33 +1,37 @@
 import 'package:flutter/foundation.dart';
 
 import '../models/sesion_usuario.dart';
+import '../models/ui_state.dart';
 import '../repositories/autenticacion_repository.dart';
 
 class AccesoViewModel extends ChangeNotifier {
   AccesoViewModel(this._repository);
 
   final AutenticacionRepository _repository;
-  bool _ocupado = false;
-  SesionUsuario? _sesion;
-  String? _error;
-  String? _mensaje;
+  UiState<SesionUsuario?> state = UiState.initial();
+  UiState<String> actionState = UiState.initial();
 
-  bool get ocupado => _ocupado;
-  SesionUsuario? get sesion => _sesion;
-  String? get error => _error;
-  String? get mensaje => _mensaje;
+  bool get ocupado => state.isLoading || actionState.isLoading;
+  SesionUsuario? get sesion => state.data;
+  String? get error => actionState.hasError
+      ? actionState.message
+      : state.hasError
+      ? state.message
+      : null;
+  String? get mensaje =>
+      actionState.isSuccess ? actionState.message ?? actionState.data : null;
 
   Future<void> restaurar() async {
-    _ocupado = true;
+    state = UiState.loading(previous: state.data);
     notifyListeners();
     try {
-      _sesion = await _repository.restaurarSesion();
-      _error = null;
+      final restored = await _repository.restaurarSesion();
+      state = restored == null
+          ? UiState.empty(null)
+          : UiState.success(restored);
     } catch (error) {
-      _sesion = null;
-      _error = mensajeErrorAutenticacion(error);
+      state = UiState.error(mensajeErrorAutenticacion(error));
     } finally {
-      _ocupado = false;
       notifyListeners();
     }
   }
@@ -49,50 +53,44 @@ class AccesoViewModel extends ChangeNotifier {
   }
 
   Future<void> restablecerContrasena(String email) async {
-    _ocupado = true;
-    _error = null;
-    _mensaje = null;
+    actionState = UiState.loading(previous: actionState.data);
     notifyListeners();
     try {
       await _repository.restablecerContrasena(email);
-      _mensaje = 'Si el correo está registrado, Firebase enviará un enlace para restablecer la contraseña.';
+      actionState = UiState.success(
+        'Si el correo está registrado, Firebase enviará un enlace para restablecer la contraseña.',
+      );
     } catch (error) {
-      _error = mensajeErrorAutenticacion(error);
+      actionState = UiState.error(mensajeErrorAutenticacion(error));
     } finally {
-      _ocupado = false;
       notifyListeners();
     }
   }
 
   Future<void> cerrarSesion() async {
-    _ocupado = true;
-    _error = null;
+    actionState = UiState.loading(previous: actionState.data);
     notifyListeners();
     try {
       await _repository.cerrarSesion();
-      _sesion = null;
-      _mensaje = 'Se cerró la sesión.';
+      state = UiState.empty(null);
+      actionState = UiState.success('Se cerró la sesión.');
     } catch (error) {
-      _error = mensajeErrorAutenticacion(error);
+      actionState = UiState.error(mensajeErrorAutenticacion(error));
     } finally {
-      _ocupado = false;
       notifyListeners();
     }
   }
 
   Future<void> _ejecutar(Future<SesionUsuario> Function() accion) async {
-    if (_ocupado) return;
-    _ocupado = true;
-    _error = null;
-    _mensaje = null;
+    if (ocupado) return;
+    actionState = UiState.loading();
     notifyListeners();
     try {
-      _sesion = await accion();
-      _mensaje = 'Sesión iniciada correctamente.';
+      state = UiState.success(await accion());
+      actionState = UiState.success('Sesión iniciada correctamente.');
     } catch (error) {
-      _error = mensajeErrorAutenticacion(error);
+      actionState = UiState.error(mensajeErrorAutenticacion(error));
     } finally {
-      _ocupado = false;
       notifyListeners();
     }
   }

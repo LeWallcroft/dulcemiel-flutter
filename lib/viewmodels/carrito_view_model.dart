@@ -1,42 +1,50 @@
 import 'package:flutter/foundation.dart';
 
 import '../models/linea_carrito.dart';
+import '../models/ui_state.dart';
 import '../network/api_service.dart';
 import '../repositories/carrito_repository.dart';
 
 class CarritoViewModel extends ChangeNotifier {
   CarritoViewModel(this._repository);
   final CarritoRepository _repository;
-  List<LineaCarrito> lineas = const [];
-  double total = 0;
-  bool cargando = false;
-  bool ocupado = false;
-  String? error;
-  String? mensaje;
+  UiState<({List<LineaCarrito> lineas, double total})> state =
+      UiState.initial();
+  UiState<String> actionState = UiState.initial();
+  List<LineaCarrito> get lineas => state.data?.lineas ?? const [];
+  double get total => state.data?.total ?? 0;
+  bool get cargando => state.isLoading;
+  bool get ocupado => actionState.isLoading;
+  String? get error => actionState.hasError
+      ? actionState.message
+      : state.hasError
+      ? state.message
+      : null;
+  String? get mensaje => actionState.isSuccess ? actionState.data : null;
   int get cantidadTotal =>
       lineas.fold<int>(0, (sum, linea) => sum + linea.cantidad);
 
   void limpiarLocal() {
-    lineas = const [];
-    total = 0;
-    error = null;
-    mensaje = null;
+    state = UiState.empty((lineas: const [], total: 0));
+    actionState = UiState.initial();
     notifyListeners();
   }
 
   Future<void> cargar() async {
     if (cargando) return;
-    cargando = true;
-    error = null;
+    state = UiState.loading(previous: state.data);
     notifyListeners();
     try {
       final result = await _repository.cargar();
-      lineas = result.lineas;
-      total = result.total;
+      state = result.lineas.isEmpty
+          ? UiState.empty(result)
+          : UiState.success(result);
     } catch (e) {
-      error = e is ApiException ? e.message : 'No se pudo cargar el carrito.';
+      state = UiState.error(
+        e is ApiException ? e.message : 'No se pudo cargar el carrito.',
+        previous: state.data,
+      );
     } finally {
-      cargando = false;
       notifyListeners();
     }
   }
@@ -55,7 +63,7 @@ class CarritoViewModel extends ChangeNotifier {
   );
   Future<void> cambiarCantidad(LineaCarrito linea, int cantidad) async {
     if (cantidad > linea.producto.stock) {
-      error = 'No hay suficiente stock disponible.';
+      actionState = UiState.error('No hay suficiente stock disponible.');
       notifyListeners();
       return;
     }
@@ -75,9 +83,7 @@ class CarritoViewModel extends ChangeNotifier {
     String? boletaEnvasePath,
   }) async {
     if (ocupado) return null;
-    ocupado = true;
-    error = null;
-    mensaje = null;
+    actionState = UiState.loading(previous: actionState.data);
     notifyListeners();
     try {
       final response = await _repository.crearPedido(entrega);
@@ -103,34 +109,33 @@ class CarritoViewModel extends ChangeNotifier {
         }
       }
       await cargar();
-      mensaje =
-          response['message']?.toString() ?? 'Pedido creado exitosamente.';
+      actionState = UiState.success(
+        response['message']?.toString() ?? 'Pedido creado exitosamente.',
+      );
       return pedido;
     } catch (e) {
-      error = e is ApiException ? e.message : 'No se pudo registrar el pedido.';
+      actionState = UiState.error(
+        e is ApiException ? e.message : 'No se pudo registrar el pedido.',
+      );
       return null;
     } finally {
-      ocupado = false;
       notifyListeners();
     }
   }
 
   Future<void> _operar(Future<void> Function() action, String success) async {
     if (ocupado) return;
-    ocupado = true;
-    error = null;
-    mensaje = null;
+    actionState = UiState.loading(previous: actionState.data);
     notifyListeners();
     try {
       await action();
       await cargar();
-      mensaje = success;
+      actionState = UiState.success(success);
     } catch (e) {
-      error = e is ApiException
-          ? e.message
-          : 'No se pudo actualizar el carrito.';
+      actionState = UiState.error(
+        e is ApiException ? e.message : 'No se pudo actualizar el carrito.',
+      );
     } finally {
-      ocupado = false;
       notifyListeners();
     }
   }

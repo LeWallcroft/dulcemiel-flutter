@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../app_theme.dart';
-import '../models/estado_api.dart';
+import '../models/ui_state.dart';
 import '../models/contenido_tienda.dart';
 import '../models/producto.dart';
 import '../network/api_service.dart';
@@ -280,6 +280,11 @@ class _InicioScreenState extends State<InicioScreen> {
                     contenido?.descripcion ??
                     'Explora nuestra selección de miel y productos apícolas.',
               ),
+              if (_catalogoViewModel.desdeCache ||
+                  _contenidoViewModel.desdeCache) ...[
+                const SizedBox(height: 8),
+                const _AvisoCacheOffline(),
+              ],
               const SizedBox(height: 22),
               if (contenido?.carrusel.isNotEmpty == true) ...[
                 _CarruselTienda(items: contenido!.carrusel),
@@ -395,7 +400,7 @@ class _InicioScreenState extends State<InicioScreen> {
               ],
               const SizedBox(height: 14),
               _EstadoServidor(
-                estado: _inicioViewModel.estado,
+                estado: _inicioViewModel.state.status,
                 mensaje: _inicioViewModel.mensaje,
                 onRetry: _inicioViewModel.verificarApi,
               ),
@@ -1069,37 +1074,59 @@ class _EstadoServidor extends StatelessWidget {
     required this.mensaje,
     required this.onRetry,
   });
-  final EstadoApi estado;
+  final UiStatus estado;
   final String? mensaje;
   final VoidCallback onRetry;
   @override
   Widget build(BuildContext context) => Row(
     children: [
       Icon(
-        estado == EstadoApi.disponible
+        estado == UiStatus.success
             ? Icons.check_circle_outline
-            : estado == EstadoApi.error
+            : estado == UiStatus.error
             ? Icons.error_outline
             : Icons.sync,
         size: 17,
-        color: estado == EstadoApi.error
+        color: estado == UiStatus.error
             ? Theme.of(context).colorScheme.error
             : DulceMielColors.hoja,
       ),
       const SizedBox(width: 7),
       Expanded(
         child: Text(
-          estado == EstadoApi.disponible
+          estado == UiStatus.success
               ? 'Tienda conectada'
-              : estado == EstadoApi.error
+              : estado == UiStatus.error
               ? mensaje ?? 'Sin conexión'
               : 'Conectando…',
           style: Theme.of(context).textTheme.bodySmall,
         ),
       ),
-      if (estado == EstadoApi.error)
+      if (estado == UiStatus.error)
         TextButton(onPressed: onRetry, child: const Text('Reintentar')),
     ],
+  );
+}
+
+class _AvisoCacheOffline extends StatelessWidget {
+  const _AvisoCacheOffline();
+  @override
+  Widget build(BuildContext context) => Card(
+    color: Theme.of(context).colorScheme.tertiaryContainer,
+    child: const Padding(
+      padding: EdgeInsets.all(12),
+      child: Row(
+        children: [
+          Icon(Icons.offline_pin_outlined),
+          SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Mostrando datos guardados. El stock y las imágenes podrían estar desactualizados.',
+            ),
+          ),
+        ],
+      ),
+    ),
   );
 }
 
