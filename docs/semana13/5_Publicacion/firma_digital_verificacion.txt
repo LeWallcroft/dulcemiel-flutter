@@ -1,0 +1,11 @@
+Verificación de firma del App Bundle (jarsigner -verify)
+Archivo: app-release.aab (57529750 bytes)
+      Signature algorithm: SHA384withRSA, 2048-bit key
+    Signature algorithm: SHA256withRSA, 2048-bit key
+- Signed by "CN=Dulce Miel, OU=Desarrollo Movil, O=Dulce Miel, L=Lima, ST=Lima, C=PE"
+jar verified.
+
+Alias name: dulcemiel
+Owner: CN=Dulce Miel, OU=Desarrollo Movil, O=Dulce Miel, L=Lima, ST=Lima, C=PE
+Valid from: Thu Nov 12 22:35:41 PET 2026 until: Mon Mar 30 22:35:41 PET 2054
+	 SHA256: FA:EE:B8:C7:45:08:67:67:BB:35:5B:A0:8A:B8:82:49:CF:15:B0:07:A1:D4:12:73:83:A6:DF:91:69:D4:99:97

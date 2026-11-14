@@ -1,0 +1,2 @@
+Artefactos (requisitos, casos de uso, modelo de datos, arquitectura y clases): ver Informe_Semana13_Dulce_Miel.docx, seccion 2.
+El codigo fuente es este mismo repositorio.

@@ -1,0 +1,1 @@
+El codigo de las pruebas esta en la carpeta test/ del repositorio.
